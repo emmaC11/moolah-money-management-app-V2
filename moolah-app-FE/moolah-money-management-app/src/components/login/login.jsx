@@ -17,20 +17,25 @@ export default function login() {
       // 2) Get the Firebase ID token from the signed-in user
       const token = await cred.user.getIdToken();
 
-      // 3) Call your backend with the token
-      const res = await fetch("http://localhost:5000/api/protected", {
-        method: "GET",
+      // 3) add user to DB - call BE API
+      const apiUrl = `${import.meta.env.VITE_API_URL}/api/v1/user`;
+
+      const res = await fetch(apiUrl, {
+        method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
-        }
+        },
+        body: JSON.stringify({
+          displayName: cred.user.displayName || cred.user.email.split('@')[0],
+          photoURL: cred.user.photoURL || null
+        })
       });
 
       const data = await res.json();
       setMessage(`Backend says: ${JSON.stringify(data)}`);
     } catch (err) {
       setMessage(`Login error: ${err.message}`);
-      console.error(err);
     }
   };
 
