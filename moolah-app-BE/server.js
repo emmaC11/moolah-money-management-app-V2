@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 
 const cors = require('cors');
-app.use(cors({ origin: 'http://localhost:5173' })); // NEEDS TO MATCH FRONTEND PORT
+app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
 
 
 // Routes
