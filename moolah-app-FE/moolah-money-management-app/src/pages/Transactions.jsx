@@ -22,6 +22,57 @@ const transactionData = [
 ];
 
 export default function Transactions() {
+
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // after component mounts, fetch transactions from backend API
+  useEffect(() => {
+    getTransactions();
+  }, []);
+
+  const getTransactions = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = auth.currentUser;
+
+      if (!user) {
+        setError('Not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/transactions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      const data = await res.json();
+
+      if (data.success) {
+        setTransactions(data.data || []);
+      } else {
+        setError(data.message || 'Failed to fetch transactions');
+      }
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header Section */}
