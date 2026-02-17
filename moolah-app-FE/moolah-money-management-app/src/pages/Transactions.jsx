@@ -73,6 +73,16 @@ export default function Transactions() {
     );
   }
 
+  // formatting functions
+  const formatAmount = (amount, type) => {
+    const formatted = `€${Number(amount).toFixed(2)}`;
+    return type === 'income' ? `+${formatted}` : `-${formatted}`;
+  }
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-IE');
+  }
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header Section */}
@@ -145,8 +155,14 @@ export default function Transactions() {
                                 height: 24
                               }}
                             />
+                          ) : col.field === 'amount' ? (
+                            <span style={{ color: transaction.type === 'income' ? 'var(--primary-green)' : 'var(--error)' }}>
+                              {formatAmount(transaction[col.field], transaction.type)}
+                            </span>
+                          ) : col.field === 'date' ? (
+                            formatDate(transaction[col.field])
                           ) : (
-                            transaction[col.field]
+                            transaction[col.field] || '—'
                           )}
                         </Typography>
                       </Box>
