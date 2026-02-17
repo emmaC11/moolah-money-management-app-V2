@@ -94,8 +94,8 @@ export default function Transactions() {
 
       {/* Transactions List */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {transactionData.map((transaction) => (
-          <Card key={transaction.id} sx={{ border: '1px solid var(--border)' }}>
+        {transactions.map((transaction) => (
+          <Card key={transaction.transaction_id} sx={{ border: '1px solid var(--border)' }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box sx={{ flex: 1 }}>
@@ -111,8 +111,8 @@ export default function Transactions() {
                               label={transaction[col.field]}
                               size="small"
                               sx={{
-                                backgroundColor: transaction[col.field] === 'Income' ? 'var(--success-light)' : 'var(--error-light)',
-                                color: transaction[col.field] === 'Income' ? 'var(--primary-green-dark)' : 'var(--error)',
+                                backgroundColor: transaction[col.field] === 'income' ? 'var(--success-light)' : 'var(--error-light)',
+                                color: transaction[col.field] === 'income' ? 'var(--primary-green-dark)' : 'var(--error)',
                                 height: 24
                               }}
                             />
