@@ -64,6 +64,14 @@ export default function Transactions() {
     }
   };
 
+  // loading message while fetching transactions from backend API
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
+        <Typography sx={{ mt: 2 }}>Loading transactions...</Typography>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -91,6 +99,27 @@ export default function Transactions() {
           Add Transaction
         </Button>
       </Box>
+
+      {/* Error Message */}
+      {error && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body1" sx={{ color: 'var(--error)' }}>
+            {error}
+          </Typography>
+        </Box>
+      )}
+
+      { /* no transactions added yet */}
+      {!error && transactions.length === 0 && (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Typography variant="h6" sx={{ color: 'var(--text-muted)', mb: 2 }}>
+            No transactions yet
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+            Click "Add Transaction" to create your first transaction
+          </Typography>
+        </Box>
+      )}
 
       {/* Transactions List */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
