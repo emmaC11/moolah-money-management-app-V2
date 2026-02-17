@@ -5,8 +5,62 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { useEffect, useState } from 'react';
+import { auth } from '../firebase';
+
+const colDef = [
+  { field: 'name', headerName: 'Budget Name'},
+  { field: 'income', headerName: 'Income' },
+  { field: 'spent', headerName: 'Expenses' },
+  { field: 'remaining', headerName: 'Balance' },
+  { field: 'createdAt', headerName: 'Created' },
+];
 
 export default function Budgets() {
+
+  const [budgets, setBudgets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    getBudgets();
+  }, []);
+
+  const getBudgets = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = auth.currentUser;
+
+      if (!user) {
+        setError('Not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/budgets`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch budgets');
+      }
+
+      const data = await res.json();
+      setBudgets(data);
+      console.log('Fetched budgets:', data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header Section */}
