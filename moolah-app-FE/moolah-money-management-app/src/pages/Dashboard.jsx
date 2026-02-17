@@ -5,6 +5,8 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import SavingsIcon from '@mui/icons-material/Savings';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import IconButton from '@mui/material/IconButton';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -147,4 +149,7 @@ export default function Dashboard() {
       </Box>
     </Container>
   );
+<IconButton onClick={handleLogout} aria-label="Sign out">
+  <LogoutIcon />
+</IconButton>
 }
