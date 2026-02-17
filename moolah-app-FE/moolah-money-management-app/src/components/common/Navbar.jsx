@@ -14,6 +14,8 @@ import MenuItem from '@mui/material/MenuItem';
 import AdbIcon from '@mui/icons-material/Adb';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import { Link, useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth} from "../../firebase";
 // referenced: https://mui.com/material-ui/react-app-bar/
 
 const pages = [
@@ -48,6 +50,17 @@ function Navbar() {
     navigate(path);
     handleCloseNavMenu();
   };
+
+const handleLogout = async () => {
+  try {
+    await signOut(auth);
+    handleCloseUserMenu();
+    navigate("/", { replace: true }); // optional; App.jsx will show Login anyway
+  } catch (err) {
+    console.error("Logout failed:", err);
+    handleCloseUserMenu();
+  }
+};
 
   return (
     <AppBar position="static" sx={{ backgroundColor: '#ffffff', color: 'var(--primary-green-dark)' }}>
@@ -161,7 +174,7 @@ function Navbar() {
               onClose={handleCloseUserMenu}
             >
               {settings.map((setting) => (
-                <MenuItem key={setting} onClick={handleCloseUserMenu}>
+                <MenuItem key={setting} onClick={setting === 'Logout' ? handleLogout : handleCloseUserMenu}>
                   <Typography sx={{ textAlign: 'center' }}>{setting}</Typography>
                 </MenuItem>
               ))}

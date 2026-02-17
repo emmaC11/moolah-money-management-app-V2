@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth } from './auth';
+import { signOut } from 'firebase/auth';
 
 const provider = new GoogleAuthProvider();
 
@@ -15,6 +16,14 @@ export default function Login() {
       // const token = credential?.accessToken; // if you need Google API access
       // const user = result.user;
       // Redirect or update UI here
+const handleLogout = async () => {
+  try {
+    await signOut(auth);
+    // optional: navigate('/login') or set UI state
+  } catch (e) {
+    console.error('Logout failed:', e);
+  }
+};
     } catch (e) {
       // Handle specific errors
       if (e.code === 'auth/popup-blocked') {
