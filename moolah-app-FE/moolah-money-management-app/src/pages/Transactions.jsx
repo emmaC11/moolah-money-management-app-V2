@@ -8,17 +8,9 @@ import { useState, useEffect } from 'react';
 const colDef = [
   { field: 'date', headerName: 'Date' },
   { field: 'description', headerName: 'Description' },
-  { field: 'category', headerName: 'Category' },
+  { field: 'category_name', headerName: 'Category' },
   { field: 'amount', headerName: 'Amount' },
   { field: 'type', headerName: 'Type' },
-  { field: 'budgetStatus', headerName: 'Budget Status' },
-];
-
-// sample transaction data - to be replaced with dynamic data
-const transactionData = [
-  { id: 1, date: '2025-12-01', description: 'Grocery Shopping', category: 'Food', amount: '€150.00', type: 'Expense', budgetStatus: 'Within Budget' },
-  { id: 2, date: '2025-12-03', description: 'Salary', category: 'Income', amount: '€3,000.00', type: 'Income', budgetStatus: 'N/A' },
-  { id: 3, date: '2025-12-05', description: 'Electricity Bill', category: 'Utilities', amount: '€75.00', type: 'Expense', budgetStatus: 'Within Budget' },
 ];
 
 export default function Transactions() {
