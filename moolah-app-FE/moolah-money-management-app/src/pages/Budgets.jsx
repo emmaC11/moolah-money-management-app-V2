@@ -10,6 +10,7 @@ import { auth } from '../firebase';
 
 const colDef = [
   { field: 'name', headerName: 'Budget Name'},
+  { field: 'categoryName', headerName: 'Category' },
   { field: 'amount', headerName: 'Income' },
   { field: 'spent', headerName: 'Expenses' },
   { field: 'remaining', headerName: 'Balance' },
