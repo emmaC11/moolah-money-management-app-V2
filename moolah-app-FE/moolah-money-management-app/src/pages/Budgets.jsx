@@ -53,7 +53,6 @@ export default function Budgets() {
 
       const data = await res.json();
       setBudgets(data);
-      console.log('Fetched budgets:', data);
     } catch (err) {
       setError(err.message);
     } finally {
