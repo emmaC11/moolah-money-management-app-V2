@@ -47,7 +47,7 @@ function App() {
   // Logged in → show app shell + routes
   return (
     <>
-      <Navbar />
+      < Navbar user={user} />
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/transactions" element={<Transactions />} />
