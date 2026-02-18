@@ -26,7 +26,7 @@ const pages = [
 ];
 const settings = ['Account', 'Logout'];
 
-function Navbar() {
+function Navbar({ user }) {
   const [anchorElNav, setAnchorElNav] = React.useState(null);
   const [anchorElUser, setAnchorElUser] = React.useState(null);
   const navigate = useNavigate();
@@ -154,7 +154,11 @@ const handleLogout = async () => {
           <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
+                
+<Avatar
+  alt={user?.displayName || user?.email || "User"}
+  src={user?.photoURL || undefined}
+/>
               </IconButton>
             </Tooltip>
             <Menu
