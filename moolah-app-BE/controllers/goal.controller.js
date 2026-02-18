@@ -13,38 +13,43 @@ const formatGoalData = (goal) => {
 };
 
 exports.list = async (req, res) => {
-  const { uid } = req.user || {};
-  const { limit = 50 } = req.query;
+ const { uid } = req.user || {};
+  const safeLimit = 200;
 
   try {
-    const [rows] = await pool.execute(
-      `SELECT goal_id AS id, user_id AS userId, title, target_amount AS targetAmount,
-              current_amount AS currentAmount, notes, 
-              due_date AS dueDate, created_at AS createdAt
+    const [rows] = await pool.query(
+      `SELECT goal_id AS id, user_id AS userId, goal_name as title, target_amount AS targetAmount,
+              current_amount AS currentAmount, 
+              target_date AS dueDate, created_at AS createdAt
          FROM Goals
         WHERE user_id = ?
         ORDER BY created_at DESC
         LIMIT ?`,
-      [uid, Math.min(Number(limit), 200)]
+      [uid, safeLimit]
     );
 
-    // Map through rows to add the computed status/progress
     const formattedData = rows.map(formatGoalData);
 
     res.json({ success: true, data: formattedData });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Database error' });
-  }
+  console.error("DEBUG ERROR:", err);
+  res.status(500).json({ 
+    success: false, 
+    error: 'Database error', 
+    message: err.message
+  });
+}
 };
 
 exports.getById = async (req, res) => {
-  const { uid } = req.user || {};
+
+ const { uid } = req.user || {};
   const { id } = req.params;
 
   try {
     const [rows] = await pool.execute(
-      `SELECT goal_id AS id, user_id AS userId, title, target_amount AS targetAmount,
-              current_amount AS currentAmount, notes, due_date AS dueDate
+      `SELECT goal_id AS id, user_id AS userId, goal_name as title, target_amount AS targetAmount,
+              current_amount AS currentAmount, target_date AS dueDate
          FROM Goals WHERE goal_id = ? AND user_id = ?`,
       [Number(id), uid]
     );
@@ -52,42 +57,49 @@ exports.getById = async (req, res) => {
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Goal not found' });
 
     res.json({ success: true, data: formatGoalData(rows[0]) });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Database error' });
-  }
+ } catch (err) {
+  console.error("DEBUG ERROR:", err);
+  res.status(500).json({ 
+    success: false, 
+    error: 'Database error', 
+    message: err.message
+  });
+}
 };
 
 exports.create = async (req, res) => {
   const { uid } = req.user || {};
-  const { title, targetAmount, currentAmount = 0, dueDate = null, notes = null } = req.body;
+  const { title, targetAmount, currentAmount = 0, dueDate = null } = req.body;
 
   if (!title || targetAmount === undefined) {
     return res.status(400).json({ success: false, error: 'Title and targetAmount are required' });
   }
 
   try {
-    // Note: status is NOT included in the INSERT statement
     const [result] = await pool.execute(
-      `INSERT INTO Goals (user_id, title, target_amount, current_amount, notes, due_date)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [uid, title.trim(), Number(targetAmount), Number(currentAmount), notes, dueDate]
+      `INSERT INTO Goals (user_id, goal_name, target_amount, current_amount, target_date)
+       VALUES (?, ?, ?, ?, ?)`,
+      [uid, title.trim(), Number(targetAmount), Number(currentAmount), dueDate]
     );
 
-    // Create the object to return, calculating status for the response
     const newGoal = formatGoalData({
       id: result.insertId,
       userId: uid,
       title,
       targetAmount,
       currentAmount,
-      notes,
       dueDate
     });
 
     res.status(201).json({ success: true, data: newGoal });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Database error' });
-  }
+ } catch (err) {
+  console.error("DEBUG ERROR:", err); 
+  res.status(500).json({ 
+    success: false, 
+    error: 'Database error', 
+    message: err.message
+  });
+}
 };
 
 exports.update = async (req, res) => {
@@ -96,11 +108,10 @@ exports.update = async (req, res) => {
   const body = req.body;
 
   const fields = []; const params = [];
-  if (body.title !== undefined) { fields.push('title = ?'); params.push(body.title.trim()); }
+  if (body.title !== undefined) { fields.push('goal_name = ?'); params.push(body.title.trim()); }
   if (body.targetAmount !== undefined) { fields.push('target_amount = ?'); params.push(Number(body.targetAmount)); }
   if (body.currentAmount !== undefined) { fields.push('current_amount = ?'); params.push(Number(body.currentAmount)); }
-  if (body.notes !== undefined) { fields.push('notes = ?'); params.push(body.notes); }
-  if (body.dueDate !== undefined) { fields.push('due_date = ?'); params.push(body.dueDate); }
+  if (body.dueDate !== undefined) { fields.push('target_date = ?'); params.push(body.dueDate); }
 
   if (fields.length === 0) return res.status(400).json({ success: false, error: 'No fields to update' });
 
@@ -113,17 +124,34 @@ exports.update = async (req, res) => {
     if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Goal not found' });
 
     res.json({ success: true, message: 'Goal updated' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Database error' });
-  }
+} catch (err) {
+  console.error("DEBUG ERROR:", err);
+  res.status(500).json({ 
+    success: false, 
+    error: 'Database error', 
+    message: err.message
+  });
+}
 };
 
 exports.remove = async (req, res) => {
   const { uid } = req.user || {};
   const { id } = req.params;
-  
-  const [result] = await pool.execute(`DELETE FROM Goals WHERE goal_id = ? AND user_id = ?`, [Number(id), uid]);
-  if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Goal not found' });
-  
-  res.status(204).send();
+  try {
+    const [result] = await pool.execute(
+      `DELETE FROM Goals WHERE goal_id = ? AND user_id = ?`, 
+      [Number(id), uid]
+    );
+    
+    if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Goal not found' });
+    
+    res.status(204).send();
+ } catch (err) {
+  console.error("DEBUG ERROR:", err);
+  res.status(500).json({ 
+    success: false, 
+    error: 'Database error', 
+    message: err.message
+  });
+}
 };
