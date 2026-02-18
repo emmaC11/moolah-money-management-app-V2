@@ -1,10 +1,9 @@
 /*Database creation*/
-CREATE DATABASE IF NOT EXISTS Moolah_DB;
-USE Moolah_DB;
-
-/*Assure character compatibility*/
+CREATE DATABASE IF NOT EXISTS Moolah_DB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
+USE Moolah_DB;
+
 /*Set user permissions*/
 CREATE USER IF NOT EXISTS 'moolah_user'@'localhost' IDENTIFIED BY 'securepassword12026';
 GRANT ALL PRIVILEGES ON Moolah_DB.* TO 'moolah_user'@'localhost';
@@ -42,7 +41,8 @@ CREATE TABLE IF NOT EXISTS Categories(
     icon VARCHAR(50),
     color VARCHAR(20),
     UNIQUE KEY unique_category (category_name, category_type));
-    
+
+  /*Transaction table*/  
 CREATE TABLE IF NOT EXISTS Transactions (
     transaction_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -56,16 +56,19 @@ CREATE TABLE IF NOT EXISTS Transactions (
     INDEX idx_user_type (user_id, type),
     INDEX idx_date (date) );
 
+/*Budgets table*/
 CREATE TABLE IF NOT EXISTS Budgets(
     budget_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    budget_name VARCHAR(100) NOT NULL,
+    category_id INT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE, is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
-    INDEX idx_user_active (user_id, is_active), UNIQUE KEY unique_user_budget (user_id, budget_name) );
+    FOREIGN KEY (category_id) REFERENCES Categories(category_id),
+    INDEX idx_user_active (user_id, is_active));
 
+/*goals table*/
 CREATE TABLE IF NOT EXISTS Goals(
     goal_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,

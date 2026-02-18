@@ -11,11 +11,12 @@ VALUES ('Food & Dining', 'expense', '🍔', '#FF6B6B'),
 ('Freelance', 'income', '💼', '#74C0FC'),
 ('Investment', 'income', '📈', '#FFD43B'),
 ('Gift', 'income', '🎁', '#FF8787'),
-('Other', 'income', '💵', '#A8E6CF');
+('Other', 'income', '💵', '#A8E6CF'),
 ('Savings','savings','🐖', '#4D96FF');
 
 
-mVALUES ('testuser', 'test@moolah.com', '$2b$10$...'),
+INSERT INTO Users(username, email, password_hash)
+VALUES ('testuser', 'test@moolah.com', '$2b$10$...'),
 ('janedoe', 'jane@moolah.com', '$2b$10$...');
 
 INSERT INTO Membership (user_id, membership_type, start_date, end_date)
@@ -29,9 +30,9 @@ VALUES (1, 1, 35.50, 'Grocery shopping', 'expense', '2026-01-15'),
 (1, 9, 2500.00, 'Monthly salary', 'income', '2026-01-01'),
 (1, 4, 50.00, 'Movie tickets', 'expense', '2026-01-17');
 
-INSERT INTO Budgets (user_id, budget_name, amount, start_date, end_date, is_active)
-VALUES (1, 'January 2026', 1500.00, '2026-01-01', '2026-01-31', TRUE),
-(1, 'Groceries', 500.00, '2026-01-01', '2026-01-31', TRUE);
+INSERT INTO Budgets (user_id, category_id, amount, start_date, end_date, is_active)
+VALUES (1, 7, 1500.00, '2026-01-01', '2026-01-31', TRUE),
+(1, 1, 500.00, '2026-01-01', '2026-01-31', TRUE);
 
 INSERT INTO Goals (user_id, goal_name, target_amount, current_amount, target_date)
 VALUES (1, 'Emergency Fund', 5000.00, 1200.00, '2026-06-30'),
