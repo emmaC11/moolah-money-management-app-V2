@@ -1,14 +1,20 @@
 require('dotenv').config();
+
 const express = require('express');
-const axios = require('axios');
-const admin = require('./firebase/admin');
+const cors = require('cors');
+
+// Initialise Firebase Admin (and Firestore) once
+require('./firebase/admin');
+
 const app = express();
 
 app.use(express.json());
 
-const cors = require('cors');
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
-
+// ✅ CORS (fixes "cors is not defined")
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true
+}));
 
 // Routes
 app.use('/api/v1/transactions', require('./routes/transaction.routes'));
