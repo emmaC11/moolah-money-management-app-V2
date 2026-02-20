@@ -328,7 +328,7 @@ exports.remove = async (req, res) => {
 // controllers/goal.controller.js (MySQL - Computed Status Version)
 const pool = require('../config/database');
 
-const formatGoalData = (goal) => {
+/*const formatGoalData = (goal) => {
   const target = Number(goal.targetAmount || goal.target_amount);
   const current = Number(goal.currentAmount || goal.current_amount);
   
@@ -481,4 +481,4 @@ exports.remove = async (req, res) => {
     message: err.message
   });
 }
-};
+};*/
