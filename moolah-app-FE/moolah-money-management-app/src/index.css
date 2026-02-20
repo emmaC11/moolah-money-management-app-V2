@@ -1,79 +1,164 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  color-scheme: light dark;
-  color: black; /* update later */
-  background-color: var(--background);
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  /* Color Palette */
-  --primary-green: #22C55E;
-  --primary-green-dark: #16A34A;
-  --background: #F9FAFB;
-  --card-bg: #FFFFFF;
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
-  --border: #E5E7EB;
-  --success-light: #DCFCE7;
-  --error: #EF4444;
-  --error-light: #FEE2E2;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  /* color: #535bf2; */
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+/* -----------------------------------------------------
+   BASE ROOT VARIABLES (LIGHT MODE)
+   These work for both Tailwind utilities and custom CSS.
+   MUI will still control component tokens separately.
+----------------------------------------------------- */
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    /* Your design system (LIGHT) */
+    --sage-green: 142 25% 65%;
+    --warm-sand: 35 35% 85%;
+    --dusty-peach: 15 45% 80%;
+    --clay-pink: 350 30% 75%;
+    --pale-sky-blue: 200 35% 85%;
+
+    --background: 35 35% 97%;
+    --foreground: 142 15% 25%;
+    --card: 0 0% 100%;
+    --card-foreground: 142 15% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 142 15% 25%;
+
+    --primary: 142 25% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 35% 90%;
+    --secondary-foreground: 142 15% 25%;
+
+    --muted: 35 35% 92%;
+    --muted-foreground: 142 10% 45%;
+
+    --accent: 200 35% 90%;
+    --accent-foreground: 142 15% 25%;
+
+    --destructive: 350 30% 70%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 35 25% 88%;
+    --input: 35 25% 88%;
+
+    --ring: 142 25% 65%;
+    --radius: 1rem;
+
+    --sage: 142 25% 65%;
+    --sand: 35 35% 85%;
+    --peach: 15 45% 80%;
+    --clay: 350 30% 75%;
+    --sky: 200 35% 85%;
+
+    --income: 142 25% 65%;
+    --expense: 350 30% 70%;
+
+    --beige: 60 56% 91%;
+    --header-bg: hsl(142 25% 65%);
   }
-  a:hover {
-    color: #747bff;
+
+  /* -----------------------------------------------------
+     DARK MODE TOKENS
+     Activated automatically when MUI applies `.dark` to <html>
+  ------------------------------------------------------ */
+  .dark {
+    --background: 220 15% 13%;
+    --foreground: 35 25% 90%;
+
+    --card: 220 15% 18%;
+    --card-foreground: 35 25% 90%;
+
+    --popover: 220 15% 15%;
+    --popover-foreground: 35 25% 90%;
+
+    --primary: 142 25% 55%;
+    --primary-foreground: 220 15% 10%;
+
+    --secondary: 220 15% 22%;
+    --secondary-foreground: 35 25% 90%;
+
+    --muted: 220 15% 25%;
+    --muted-foreground: 35 20% 65%;
+
+    --accent: 200 25% 25%;
+    --accent-foreground: 35 25% 90%;
+
+    --destructive: 350 45% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 25%;
+    --input: 220 15% 22%;
+
+    --ring: 142 25% 55%;
+    --header-bg: hsl(220 15% 18%);
   }
-  button {
-    background-color: #f9f9f9;
+
+  /* -----------------------------------------------------
+     GLOBAL ELEMENT RULES
+     These work with your Tailwind colour tokens
+  ------------------------------------------------------ */
+  * {
+    @apply border-border;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      border-color 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  html,
+  body {
+    @apply bg-background text-foreground font-sans;
+    line-height: 1.6;
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  body {
+    position: relative;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+    line-height: 1.2;
+  }
+}
+
+/* -----------------------------------------------------
+   App Container
+------------------------------------------------------ */
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
+/* -----------------------------------------------------
+   Responsive tweaks
+------------------------------------------------------ */
+@media (max-width: 768px) {
+  .container { @apply px-3 max-w-full; }
+  h1 { font-size: 1.5rem; line-height: 1.3; }
+  h2 { font-size: 1.25rem; line-height: 1.4; }
+  h3 { font-size: 1.125rem; line-height: 1.4; }
+
+  .btn-primary,
+  .btn-secondary { @apply px-4 py-3 rounded-xl text-sm; }
+
+  input,
+  textarea,
+  select { @apply rounded-xl p-3 text-base; }
+
+  [class*="max-w-"] {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .container { @apply px-2; }
+  h1 { font-size: 1.375rem; }
+  .grid-responsive {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 }

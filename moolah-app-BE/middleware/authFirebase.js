@@ -1,24 +1,15 @@
-// middleware/authFirebase.js
-const admin = require('../firebase/admin');
+module.exports = function requireAdmin(req, res, next) {
+  // Supports either custom claim `admin: true` or roles array etc.
+  const u = req.user || {};
+  const isAdmin =
+    u.admin === true ||
+    u.role === 'admin' ||
+    (Array.isArray(u.roles) && u.roles.includes('admin')) ||
+    (u.claims && u.claims.admin === true);
 
-async function authFirebase(req, res, next) {
-  try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ success: false, message: 'Missing token' });
-
-    const decoded = await admin.auth().verifyIdToken(token); // { uid, email, ... }
-    // Attach ONLY what controllers need
-    req.user = {
-      uid: decoded.uid,
-      email: decoded.email ?? null,
-      claims: decoded
-    };
-    next();
-  } catch (e) {
-    console.error('authFirebase error:', e.message);
-    res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  if (!isAdmin) {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
   }
-}
 
-module.exports = authFirebase;
+  return next();
+};

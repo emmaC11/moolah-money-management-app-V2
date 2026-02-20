@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
+
 const auth = require('../middleware/authFirebase');
 const ctrl = require('../controllers/budget.controller');
 const asyncHandler = require('../utils/asyncHandler');
 
 router.use(auth);
 
+// RESTful routes
 router.get('/', asyncHandler(ctrl.list));
 router.get('/:id', asyncHandler(ctrl.getById));
 router.post('/', asyncHandler(ctrl.create));
