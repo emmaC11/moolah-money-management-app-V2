@@ -1,5 +1,8 @@
-// controllers/goal.controller.js (MySQL)
-const pool = require('../config/database');
+const { admin, db } = require('../firebase/admin');
+
+function goalsCol(uid) {
+  return db.collection('users').doc(uid).collection('goals');
+}
 
 function validate(body, { partial = false } = {}) {
   const errors = [];
@@ -7,20 +10,32 @@ function validate(body, { partial = false } = {}) {
     if (!body.title) errors.push('title is required');
     if (body.targetAmount === undefined || body.targetAmount === null) errors.push('targetAmount is required');
   }
-  const isNum = (v) => v === undefined || v === null ? true : !Number.isNaN(Number(v));
+  const isNum = (v) => (v === undefined || v === null) ? true : !Number.isNaN(Number(v));
   if (body.title !== undefined && typeof body.title !== 'string') errors.push('title must be a string');
   if (!isNum(body.targetAmount)) errors.push('targetAmount must be a number');
   if (!isNum(body.currentAmount)) errors.push('currentAmount must be a number');
   if (body.currency !== undefined && typeof body.currency !== 'string') errors.push('currency must be a string');
-  if (body.status !== undefined && !['active','completed','archived'].includes(body.status)) errors.push('status must be one of: active, completed, archived');
+  if (body.status !== undefined && !['active', 'completed', 'archived'].includes(body.status)) {
+    errors.push('status must be one of: active, completed, archived');
+  }
   return errors;
 }
 
 function computeStatus({ currentAmount, targetAmount, status }) {
   if (status === 'archived') return 'archived';
-  const t = Number(targetAmount); const c = Number(currentAmount);
+  const t = Number(targetAmount);
+  const c = Number(currentAmount);
   if (!Number.isNaN(t) && t > 0 && !Number.isNaN(c) && c >= t) return 'completed';
   return status || 'active';
+}
+
+function withProgress(goal) {
+  const t = Number(goal.targetAmount);
+  const c = Number(goal.currentAmount);
+  if (Number.isFinite(t) && t > 0 && Number.isFinite(c)) {
+    return { ...goal, progress: Math.max(0, Math.min(100, Math.round((c / t) * 100))) };
+  }
+  return { ...goal, progress: null };
 }
 
 exports.list = async (req, res) => {
@@ -28,138 +43,126 @@ exports.list = async (req, res) => {
   if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
 
   const {
-    status, categoryId, dueBefore, dueAfter,
-    orderBy = 'created_at', sort = 'desc', limit = 50,
+    status,
+    categoryId,
+    dueBefore,
+    dueAfter,
+    orderBy = 'created_at',
+    sort = 'desc',
+    limit = 50,
   } = req.query;
 
-  const allowedOrder = ['due_date','created_at'];
-  const ob = allowedOrder.includes(orderBy) ? orderBy : 'created_at';
-  const srt = String(sort).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
   const lim = Math.min(parseInt(limit, 10) || 50, 200);
+  const dir = String(sort).toLowerCase() === 'asc' ? 'asc' : 'desc';
 
-  const clauses = ['user_uid = ?']; const params = [uid];
-  if (status) { clauses.push('status = ?'); params.push(status); }
-  if (categoryId) { clauses.push('category_id = ?'); params.push(Number(categoryId)); }
-  if (dueAfter) { clauses.push('due_date >= ?'); params.push(dueAfter); }
-  if (dueBefore) { clauses.push('due_date <= ?'); params.push(dueBefore); }
+  let q = goalsCol(uid);
 
-  const [rows] = await pool.execute(
-    `SELECT goal_id AS id, user_uid AS userId, title, target_amount AS targetAmount,
-            current_amount AS currentAmount, currency, category_id AS categoryId,
-            notes, status, due_date AS dueDate, created_at AS createdAt, updated_at AS updatedAt
-       FROM goals
-      WHERE ${clauses.join(' AND ')}
-      ORDER BY ${ob} ${srt}
-      LIMIT ?`,
-    [...params, lim]
-  );
+  if (status) q = q.where('status', '==', status);
+  if (categoryId) q = q.where('categoryId', '==', String(categoryId));
+  if (dueAfter) q = q.where('dueDate', '>=', String(dueAfter));
+  if (dueBefore) q = q.where('dueDate', '<=', String(dueBefore));
 
-  // compute progress (not stored)
-  rows.forEach(r => {
-    if (r.targetAmount > 0 && r.currentAmount !== null && r.currentAmount !== undefined) {
-      r.progress = Math.max(0, Math.min(100, Math.round((Number(r.currentAmount)/Number(r.targetAmount))*100)));
-    } else {
-      r.progress = null;
-    }
-  });
+  const hasDueRange = !!(dueAfter || dueBefore);
+  const ob = (orderBy === 'due_date') ? 'dueDate' : 'createdAt';
 
-  res.json(rows);
+  q = q.orderBy(hasDueRange ? 'dueDate' : ob, dir).limit(lim);
+
+  const snap = await q.get();
+  res.json(snap.docs.map(d => withProgress({ id: d.id, ...d.data() })));
 };
 
 exports.getById = async (req, res) => {
   const { uid } = req.user || {};
-  const { id } = req.params;
-  const [rows] = await pool.execute(
-    `SELECT goal_id AS id, user_uid AS userId, title, target_amount AS targetAmount,
-            current_amount AS currentAmount, currency, category_id AS categoryId,
-            notes, status, due_date AS dueDate, created_at AS createdAt, updated_at AS updatedAt
-       FROM goals WHERE goal_id = ? AND user_uid = ?`,
-    [Number(id), uid]
-  );
-  if (!rows[0]) return res.status(404).json({ error: 'Goal not found' });
-  res.json(rows[0]);
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
+
+  const doc = await goalsCol(uid).doc(String(req.params.id)).get();
+  if (!doc.exists) return res.status(404).json({ error: 'Goal not found' });
+
+  res.json(withProgress({ id: doc.id, ...doc.data() }));
 };
 
 exports.create = async (req, res) => {
   const { uid } = req.user || {};
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
+
   const errors = validate(req.body, { partial: false });
   if (errors.length) return res.status(400).json({ error: 'Validation failed', details: errors });
 
   const {
-    title, targetAmount, currentAmount = 0, currency = 'EUR',
-    dueDate = null, categoryId = null, notes = null, status,
+    title,
+    targetAmount,
+    currentAmount = 0,
+    currency = 'EUR',
+    dueDate = null,
+    categoryId = null,
+    notes = null,
+    status,
   } = req.body;
 
-  const finalStatus = computeStatus({ currentAmount, targetAmount, status });
+  const payload = {
+    title: String(title).trim(),
+    targetAmount: Number(targetAmount),
+    currentAmount: Number(currentAmount),
+    currency,
+    categoryId: categoryId ? String(categoryId) : null,
+    notes: notes ?? null,
+    status: computeStatus({ currentAmount, targetAmount, status }),
+    dueDate: dueDate ?? null, // store 'YYYY-MM-DD' string
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
 
-  const [result] = await pool.execute(
-    `INSERT INTO goals
-      (user_uid, title, target_amount, current_amount, currency, category_id, notes, status, due_date)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [uid, String(title).trim(), Number(targetAmount), Number(currentAmount), currency,
-     categoryId ? Number(categoryId) : null, notes, finalStatus, dueDate]
-  );
+  const ref = await goalsCol(uid).add(payload);
+  const created = await ref.get();
 
-  const [rows] = await pool.execute(
-    `SELECT goal_id AS id, user_uid AS userId, title, target_amount AS targetAmount,
-            current_amount AS currentAmount, currency, category_id AS categoryId,
-            notes, status, due_date AS dueDate, created_at AS createdAt, updated_at AS updatedAt
-       FROM goals WHERE goal_id = ?`,
-    [result.insertId]
-  );
-  res.status(201).json(rows[0]);
+  res.status(201).json(withProgress({ id: created.id, ...created.data() }));
 };
 
 exports.update = async (req, res) => {
   const { uid } = req.user || {};
-  const { id } = req.params;
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
+
+  const ref = goalsCol(uid).doc(String(req.params.id));
+  const existing = await ref.get();
+  if (!existing.exists) return res.status(404).json({ error: 'Goal not found' });
+
   const errors = validate(req.body, { partial: true });
   if (errors.length) return res.status(400).json({ error: 'Validation failed', details: errors });
 
-  // ensure ownership
-  const [exists] = await pool.execute(`SELECT * FROM goals WHERE goal_id = ? AND user_uid = ?`, [Number(id), uid]);
-  if (!exists[0]) return res.status(404).json({ error: 'Goal not found' });
+  const current = existing.data();
 
-  const updates = {};
-  const fields = []; const params = [];
-  const set = (col, val) => { fields.push(`${col} = ?`); params.push(val); };
+  const patch = {};
+  if (req.body.title !== undefined) patch.title = String(req.body.title).trim();
+  if (req.body.targetAmount !== undefined) patch.targetAmount = Number(req.body.targetAmount);
+  if (req.body.currentAmount !== undefined) patch.currentAmount = Number(req.body.currentAmount);
+  if (req.body.currency !== undefined) patch.currency = req.body.currency;
+  if (req.body.categoryId !== undefined) patch.categoryId = req.body.categoryId ? String(req.body.categoryId) : null;
+  if (req.body.notes !== undefined) patch.notes = req.body.notes ?? null;
+  if (req.body.dueDate !== undefined) patch.dueDate = req.body.dueDate ?? null;
 
-  const merged = { ...exists[0] }; // base for status recompute
-  if (req.body.title !== undefined) { set('title', String(req.body.title).trim()); merged.title = String(req.body.title).trim(); }
-  if (req.body.targetAmount !== undefined) { set('target_amount', Number(req.body.targetAmount)); merged.target_amount = Number(req.body.targetAmount); }
-  if (req.body.currentAmount !== undefined) { set('current_amount', Number(req.body.currentAmount)); merged.current_amount = Number(req.body.currentAmount); }
-  if (req.body.currency !== undefined) { set('currency', req.body.currency); merged.currency = req.body.currency; }
-  if (req.body.categoryId !== undefined) { set('category_id', req.body.categoryId ? Number(req.body.categoryId) : null); merged.category_id = req.body.categoryId ? Number(req.body.categoryId) : null; }
-  if (req.body.notes !== undefined) { set('notes', req.body.notes || null); merged.notes = req.body.notes || null; }
-  if (req.body.dueDate !== undefined) { set('due_date', req.body.dueDate || null); merged.due_date = req.body.dueDate || null; }
-  const recomputeStatus = computeStatus({
-    currentAmount: req.body.currentAmount !== undefined ? req.body.currentAmount : merged.current_amount,
-    targetAmount: req.body.targetAmount !== undefined ? req.body.targetAmount : merged.target_amount,
-    status: req.body.status !== undefined ? req.body.status : exists[0].status
+  const merged = { ...current, ...patch };
+  patch.status = computeStatus({
+    currentAmount: merged.currentAmount,
+    targetAmount: merged.targetAmount,
+    status: (req.body.status !== undefined ? req.body.status : merged.status),
   });
-  set('status', recomputeStatus);
 
-  if (fields.length) {
-    await pool.execute(
-      `UPDATE goals SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE goal_id = ? AND user_uid = ?`,
-      [...params, Number(id), uid]
-    );
-  }
+  patch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
-  const [rows] = await pool.execute(
-    `SELECT goal_id AS id, user_uid AS userId, title, target_amount AS targetAmount,
-            current_amount AS currentAmount, currency, category_id AS categoryId,
-            notes, status, due_date AS dueDate, created_at AS createdAt, updated_at AS UpdatedAt
-       FROM goals WHERE goal_id = ?`,
-    [Number(id)]
-  );
-  res.json(rows[0]);
+  await ref.set(patch, { merge: true });
+  const updated = await ref.get();
+
+  res.json(withProgress({ id: updated.id, ...updated.data() }));
 };
 
 exports.remove = async (req, res) => {
   const { uid } = req.user || {};
-  const { id } = req.params;
-  const [result] = await pool.execute(`DELETE FROM goals WHERE goal_id = ? AND user_uid = ?`, [Number(id), uid]);
-  if (result.affectedRows === 0) return res.status(404).json({ error: 'Goal not found' });
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
+
+  const ref = goalsCol(uid).doc(String(req.params.id));
+  const existing = await ref.get();
+  if (!existing.exists) return res.status(404).json({ error: 'Goal not found' });
+
+  await ref.delete();
   res.status(204).send();
 };
