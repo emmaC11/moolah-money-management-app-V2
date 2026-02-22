@@ -10,10 +10,12 @@ function validate(body, { partial = false } = {}) {
   if (!partial) {
     if (!body.name) errors.push('name is required');
     if (body.amount === undefined || body.amount === null) errors.push('amount is required');
+    if (!body.categoryId) errors.push('categoryId is required');
   }
   if (body.name !== undefined && typeof body.name !== 'string') errors.push('name must be a string');
   if (body.amount !== undefined && Number.isNaN(Number(body.amount))) errors.push('amount must be a number');
   if (body.currency !== undefined && typeof body.currency !== 'string') errors.push('currency must be a string');
+  if (body.categoryId !== undefined && body.categoryId !== null && typeof body.categoryId !== 'string') errors.push('categoryId must be a string');
   return errors;
 }
 
@@ -48,12 +50,13 @@ exports.create = async (req, res) => {
   const errors = validate(req.body, { partial: false });
   if (errors.length) return res.status(400).json({ error: 'Validation failed', details: errors });
 
-  const { name, amount, currency = 'EUR', periodStart = null, periodEnd = null } = req.body;
+  const { name, amount, currency = 'EUR', periodStart = null, periodEnd = null, categoryId } = req.body;
 
   const payload = {
     name: String(name).trim(),
     amount: Number(amount),
     currency,
+    categoryId: String(categoryId),
     periodStart: periodStart || null,
     periodEnd: periodEnd || null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -81,6 +84,7 @@ exports.update = async (req, res) => {
   if (req.body.name !== undefined) patch.name = String(req.body.name).trim();
   if (req.body.amount !== undefined) patch.amount = Number(req.body.amount);
   if (req.body.currency !== undefined) patch.currency = req.body.currency;
+  if (req.body.categoryId !== undefined) patch.categoryId = req.body.categoryId ? String(req.body.categoryId) : null;
   if (req.body.periodStart !== undefined) patch.periodStart = req.body.periodStart || null;
   if (req.body.periodEnd !== undefined) patch.periodEnd = req.body.periodEnd || null;
 
