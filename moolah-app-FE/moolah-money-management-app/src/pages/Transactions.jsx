@@ -8,6 +8,8 @@ import {
   orderBy,
   query,
   addDoc,
+  updateDoc,
+  doc,
   Timestamp,
 } from 'firebase/firestore';
 
@@ -43,6 +45,7 @@ export default function Transactions() {
   const [currentUser, setCurrentUser] = useState(null);
 
   const [openAdd, setOpenAdd] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -121,12 +124,31 @@ export default function Transactions() {
 
   const openAddDialog = () => {
     setFormError(null);
+    setEditingTransaction(null);
     setForm({
       type: 'expense',
       amount: '',
       date: '',
       category: '',
       description: '',
+    });
+    setOpenAdd(true);
+  };
+
+  const openEditDialog = (tx) => {
+    setFormError(null);
+    setEditingTransaction(tx);
+    let dateStr = '';
+    if (tx.date) {
+      const d = typeof tx.date?.toDate === 'function' ? tx.date.toDate() : new Date(tx.date);
+      dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    setForm({
+      type: tx.type || 'expense',
+      amount: String(tx.amount || ''),
+      date: dateStr,
+      category: tx.category || '',
+      description: tx.description || '',
     });
     setOpenAdd(true);
   };
@@ -139,11 +161,11 @@ export default function Transactions() {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
-  const addTransaction = async () => {
+  const saveTransaction = async () => {
     setFormError(null);
 
     if (!currentUser) {
-      setFormError('You must be logged in to add a transaction.');
+      setFormError('You must be logged in.');
       return;
     }
 
@@ -158,42 +180,55 @@ export default function Transactions() {
       return;
     }
 
-    const dateAsTimestamp = Timestamp.fromDate(
-      new Date(`${form.date}T00:00:00`)
-    );
-
+    const dateAsTimestamp = Timestamp.fromDate(new Date(`${form.date}T00:00:00`));
     setSaving(true);
 
     try {
-      const txRef = collection(db, 'users', currentUser.uid, 'transactions');
-
-      const payload = {
-        type: form.type,
-        amount: amountNum,
-        date: dateAsTimestamp,
-        category: form.category.trim(),
-        description: form.description.trim(),
-        userId: currentUser.uid,
-      };
-
-      const docRef = await addDoc(txRef, payload);
-
-      const newItem = { id: docRef.id, ...payload };
-
-      setTransactions((prev) => {
-        const merged = [newItem, ...prev];
-        merged.sort((a, b) => {
-          const aMs = a.date?.toMillis ? a.date.toMillis() : new Date(a.date).getTime();
-          const bMs = b.date?.toMillis ? b.date.toMillis() : new Date(b.date).getTime();
-          return bMs - aMs;
+      if (editingTransaction) {
+        await updateDoc(
+          doc(db, 'users', currentUser.uid, 'transactions', editingTransaction.id),
+          {
+            type: form.type,
+            amount: amountNum,
+            date: dateAsTimestamp,
+            category: form.category.trim(),
+            description: form.description.trim(),
+          }
+        );
+        setTransactions((prev) =>
+          prev.map((t) =>
+            t.id === editingTransaction.id
+              ? { ...t, type: form.type, amount: amountNum, date: dateAsTimestamp, category: form.category.trim(), description: form.description.trim() }
+              : t
+          )
+        );
+      } else {
+        const txRef = collection(db, 'users', currentUser.uid, 'transactions');
+        const payload = {
+          type: form.type,
+          amount: amountNum,
+          date: dateAsTimestamp,
+          category: form.category.trim(),
+          description: form.description.trim(),
+          userId: currentUser.uid,
+        };
+        const docRef = await addDoc(txRef, payload);
+        const newItem = { id: docRef.id, ...payload };
+        setTransactions((prev) => {
+          const merged = [newItem, ...prev];
+          merged.sort((a, b) => {
+            const aMs = a.date?.toMillis ? a.date.toMillis() : new Date(a.date).getTime();
+            const bMs = b.date?.toMillis ? b.date.toMillis() : new Date(b.date).getTime();
+            return bMs - aMs;
+          });
+          return merged;
         });
-        return merged;
-      });
+      }
 
       setOpenAdd(false);
     } catch (e) {
-      console.error('Add transaction failed:', e);
-      setFormError(e?.message || 'Failed to add transaction.');
+      console.error('Save transaction failed:', e);
+      setFormError(e?.message || 'Failed to save transaction.');
     } finally {
       setSaving(false);
     }
@@ -262,7 +297,7 @@ export default function Transactions() {
 
       {/* ADD TRANSACTION DIALOG */}
       <Dialog open={openAdd} onClose={closeAddDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Add Transaction</DialogTitle>
+        <DialogTitle>{editingTransaction ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
 
         <DialogContent sx={{ pt: 1 }}>
           {formError && (
@@ -330,12 +365,12 @@ export default function Transactions() {
             Cancel
           </Button>
           <Button
-            onClick={addTransaction}
+            onClick={saveTransaction}
             disabled={saving}
             variant="contained"
             sx={{ textTransform: 'none' }}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : editingTransaction ? 'Update' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -414,7 +449,7 @@ export default function Transactions() {
                 </Box>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <IconButton onClick={() => console.log('Edit', transaction.id)}>
+                  <IconButton onClick={() => openEditDialog(transaction)}>
                     <EditIcon fontSize="small" />
                   </IconButton>
 
