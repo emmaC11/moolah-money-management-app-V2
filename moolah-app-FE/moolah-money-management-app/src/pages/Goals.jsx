@@ -37,6 +37,8 @@ import {
   Timestamp,
   deleteDoc,
   doc,
+  updateDoc,
+  increment,
 } from 'firebase/firestore';
 
 // Dropdown options for goal type (chip displays this type)
@@ -68,6 +70,13 @@ export default function Goals() {
     target: '',
     deadline: '', // YYYY-MM-DD
   });
+
+  // ✅ Add Money dialog + form (new)
+  const [openAddMoney, setOpenAddMoney] = useState(false);
+  const [addMoneySaving, setAddMoneySaving] = useState(false);
+  const [addMoneyError, setAddMoneyError] = useState(null);
+  const [selectedGoal, setSelectedGoal] = useState(null);
+  const [moneyAmount, setMoneyAmount] = useState('');
 
   // ---------------- Helpers ----------------
 
@@ -119,8 +128,19 @@ export default function Goals() {
     if (!saving) setOpenAdd(false);
   };
 
+  // ✅ Open/close Add Money dialog (new)
+  const openAddMoneyDialog = (goal) => {
+    setAddMoneyError(null);
+    setSelectedGoal(goal);
+    setMoneyAmount('');
+    setOpenAddMoney(true);
+  };
+
+  const closeAddMoneyDialog = () => {
+    if (!addMoneySaving) setOpenAddMoney(false);
+  };
+
   // ---------------- Load Goals ----------------
-  // Your existing file used hard-coded sample data; this replaces it with Firestore loading. [1](https://people.ey.com/personal/cyril_mannion_ie_ey_com/Documents/Microsoft%20Copilot%20Chat%20Files/Goals.jsx)
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user ?? null);
@@ -166,7 +186,6 @@ export default function Goals() {
       return;
     }
 
-    // Minimum validation (simple + defendable)
     if (!form.type || !form.name || !form.target || !form.deadline) {
       setFormError('Please complete Type, Name, Target, and Deadline.');
       return;
@@ -178,7 +197,6 @@ export default function Goals() {
       return;
     }
 
-    // Deadline required; store as Timestamp at local midnight (same approach as transactions date).
     const deadlineTs = Timestamp.fromDate(new Date(`${form.deadline}T00:00:00`));
 
     setSaving(true);
@@ -189,18 +207,16 @@ export default function Goals() {
         userId: currentUser.uid,
         type: form.type,
         name: form.name.trim(),
-        description: form.description.trim(), // optional
+        description: form.description.trim(),
         target: targetNum,
-        current: 0, // start at 0 (simple)
+        current: 0,
         deadline: deadlineTs,
         createdAt: Timestamp.now(),
       };
 
       const docRef = await addDoc(goalsRef, payload);
-
       const newItem = { id: docRef.id, ...payload };
 
-      // Update UI immediately and keep deadline ordering
       setGoals((prev) => {
         const merged = [newItem, ...prev];
         merged.sort((a, b) => {
@@ -239,6 +255,50 @@ export default function Goals() {
     }
   };
 
+  // ✅ Add Money (new)
+  const addMoneyToGoal = async () => {
+    setAddMoneyError(null);
+
+    if (!currentUser) {
+      setAddMoneyError('You must be logged in to add money.');
+      return;
+    }
+    if (!selectedGoal?.id) {
+      setAddMoneyError('No goal selected.');
+      return;
+    }
+
+    const amountNum = Number(moneyAmount);
+    if (Number.isNaN(amountNum) || amountNum <= 0) {
+      setAddMoneyError('Amount must be a positive number.');
+      return;
+    }
+
+    setAddMoneySaving(true);
+    try {
+      // Atomic increment in Firestore
+      await updateDoc(doc(db, 'goals', selectedGoal.id), {
+        current: increment(amountNum),
+      });
+
+      // Update UI immediately (simple)
+      setGoals((prev) =>
+        prev.map((g) =>
+          g.id === selectedGoal.id
+            ? { ...g, current: Number(g.current || 0) + amountNum }
+            : g
+        )
+      );
+
+      setOpenAddMoney(false);
+    } catch (e) {
+      console.error('Add money failed:', e);
+      setAddMoneyError(e?.message || 'Failed to add money.');
+    } finally {
+      setAddMoneySaving(false);
+    }
+  };
+
   // ---------------- Summary Cards ----------------
   const totalGoals = goals.length;
   const totalSaved = goals.reduce((sum, goal) => sum + Number(goal.current || 0), 0);
@@ -266,13 +326,12 @@ export default function Goals() {
           </Typography>
         </Box>
 
-        {/* Create New Goal button existed in your file; now it opens the dialog. [1](https://people.ey.com/personal/cyril_mannion_ie_ey_com/Documents/Microsoft%20Copilot%20Chat%20Files/Goals.jsx) */}
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           sx={{
             backgroundColor: 'var(--primary-green)',
-            color: '#000', // keep readable in your Windtail CSS setup (like Transactions)
+            color: '#000',
             textTransform: 'none',
             '& .MuiButton-startIcon, & .MuiSvgIcon-root': { color: '#000' },
             '&:hover': { backgroundColor: 'var(--primary-green-dark)', color: '#000' },
@@ -294,14 +353,7 @@ export default function Goals() {
             </Alert>
           )}
 
-          <TextField
-            select
-            fullWidth
-            margin="dense"
-            label="Type"
-            value={form.type}
-            onChange={onFormChange('type')}
-          >
+          <TextField select fullWidth margin="dense" label="Type" value={form.type} onChange={onFormChange('type')}>
             {GOAL_TYPES.map((t) => (
               <MenuItem key={t.value} value={t.value}>
                 {t.label}
@@ -352,6 +404,46 @@ export default function Goals() {
           </Button>
           <Button onClick={addGoal} disabled={saving} variant="contained" sx={{ textTransform: 'none' }}>
             {saving ? 'Saving…' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ✅ Add Money Dialog (new) */}
+      <Dialog open={openAddMoney} onClose={closeAddMoneyDialog} fullWidth maxWidth="xs">
+        <DialogTitle>Add Money</DialogTitle>
+
+        <DialogContent sx={{ pt: 1 }}>
+          {addMoneyError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {addMoneyError}
+            </Alert>
+          )}
+
+          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 1 }}>
+            Goal: <strong>{selectedGoal?.name || '—'}</strong>
+          </Typography>
+
+          <TextField
+            fullWidth
+            margin="dense"
+            label="Amount (€)"
+            value={moneyAmount}
+            onChange={(e) => setMoneyAmount(e.target.value)}
+            inputProps={{ inputMode: 'decimal' }}
+          />
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeAddMoneyDialog} disabled={addMoneySaving} sx={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={addMoneyToGoal}
+            disabled={addMoneySaving}
+            variant="contained"
+            sx={{ textTransform: 'none' }}
+          >
+            {addMoneySaving ? 'Saving…' : 'Add'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -530,7 +622,7 @@ export default function Goals() {
                           backgroundColor: 'var(--success-light)',
                         },
                       }}
-                      onClick={() => console.log('Add Money', goal.id)}
+                      onClick={() => openAddMoneyDialog(goal)}   // ✅ wired up
                     >
                       Add Money
                     </Button>
@@ -539,7 +631,6 @@ export default function Goals() {
                       <EditIcon fontSize="small" />
                     </IconButton>
 
-                    {/* ✅ DELETE wired up */}
                     <IconButton
                       size="small"
                       sx={{ color: 'var(--error)' }}
