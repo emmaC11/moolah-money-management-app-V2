@@ -60,6 +60,7 @@ export default function Goals() {
 
   // Add-goal dialog + form
   const [openAdd, setOpenAdd] = useState(false);
+  const [editingGoal, setEditingGoal] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -114,12 +115,31 @@ export default function Goals() {
 
   const openAddDialog = () => {
     setFormError(null);
+    setEditingGoal(null);
     setForm({
       type: GOAL_TYPES[0].value,
       name: '',
       description: '',
       target: '',
       deadline: '',
+    });
+    setOpenAdd(true);
+  };
+
+  const openEditGoalDialog = (goal) => {
+    setFormError(null);
+    setEditingGoal(goal);
+    let deadlineStr = '';
+    if (goal.deadline) {
+      const d = typeof goal.deadline?.toDate === 'function' ? goal.deadline.toDate() : new Date(goal.deadline);
+      deadlineStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    setForm({
+      type: goal.type || GOAL_TYPES[0].value,
+      name: goal.name || '',
+      description: goal.description || '',
+      target: String(goal.target || ''),
+      deadline: deadlineStr,
     });
     setOpenAdd(true);
   };
@@ -177,12 +197,11 @@ export default function Goals() {
     return () => unsub();
   }, []);
 
-  // ---------------- Add Goal ----------------
-  const addGoal = async () => {
+  const saveGoal = async () => {
     setFormError(null);
 
     if (!currentUser) {
-      setFormError('You must be logged in to create a goal.');
+      setFormError('You must be logged in.');
       return;
     }
 
@@ -201,36 +220,50 @@ export default function Goals() {
 
     setSaving(true);
     try {
-      const goalsRef = collection(db, 'goals');
-
-      const payload = {
-        userId: currentUser.uid,
-        type: form.type,
-        name: form.name.trim(),
-        description: form.description.trim(),
-        target: targetNum,
-        current: 0,
-        deadline: deadlineTs,
-        createdAt: Timestamp.now(),
-      };
-
-      const docRef = await addDoc(goalsRef, payload);
-      const newItem = { id: docRef.id, ...payload };
-
-      setGoals((prev) => {
-        const merged = [newItem, ...prev];
-        merged.sort((a, b) => {
-          const aMs = a.deadline?.toMillis ? a.deadline.toMillis() : new Date(a.deadline).getTime();
-          const bMs = b.deadline?.toMillis ? b.deadline.toMillis() : new Date(b.deadline).getTime();
-          return aMs - bMs;
+      if (editingGoal) {
+        await updateDoc(doc(db, 'goals', editingGoal.id), {
+          type: form.type,
+          name: form.name.trim(),
+          description: form.description.trim(),
+          target: targetNum,
+          deadline: deadlineTs,
         });
-        return merged;
-      });
+        setGoals((prev) =>
+          prev.map((g) =>
+            g.id === editingGoal.id
+              ? { ...g, type: form.type, name: form.name.trim(), description: form.description.trim(), target: targetNum, deadline: deadlineTs }
+              : g
+          )
+        );
+      } else {
+        const goalsRef = collection(db, 'goals');
+        const payload = {
+          userId: currentUser.uid,
+          type: form.type,
+          name: form.name.trim(),
+          description: form.description.trim(),
+          target: targetNum,
+          current: 0,
+          deadline: deadlineTs,
+          createdAt: Timestamp.now(),
+        };
+        const docRef = await addDoc(goalsRef, payload);
+        const newItem = { id: docRef.id, ...payload };
+        setGoals((prev) => {
+          const merged = [newItem, ...prev];
+          merged.sort((a, b) => {
+            const aMs = a.deadline?.toMillis ? a.deadline.toMillis() : new Date(a.deadline).getTime();
+            const bMs = b.deadline?.toMillis ? b.deadline.toMillis() : new Date(b.deadline).getTime();
+            return aMs - bMs;
+          });
+          return merged;
+        });
+      }
 
       setOpenAdd(false);
     } catch (e) {
-      console.error('Add goal failed:', e);
-      setFormError(e?.message || 'Failed to create goal.');
+      console.error('Save goal failed:', e);
+      setFormError(e?.message || 'Failed to save goal.');
     } finally {
       setSaving(false);
     }
@@ -344,7 +377,7 @@ export default function Goals() {
 
       {/* Add Goal Dialog */}
       <Dialog open={openAdd} onClose={closeAddDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Create New Goal</DialogTitle>
+        <DialogTitle>{editingGoal ? 'Edit Goal' : 'Create New Goal'}</DialogTitle>
 
         <DialogContent sx={{ pt: 1 }}>
           {formError && (
@@ -402,8 +435,8 @@ export default function Goals() {
           <Button onClick={closeAddDialog} disabled={saving} sx={{ textTransform: 'none' }}>
             Cancel
           </Button>
-          <Button onClick={addGoal} disabled={saving} variant="contained" sx={{ textTransform: 'none' }}>
-            {saving ? 'Saving…' : 'Save'}
+          <Button onClick={saveGoal} disabled={saving} variant="contained" sx={{ textTransform: 'none' }}>
+            {saving ? 'Saving…' : editingGoal ? 'Update' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -627,7 +660,7 @@ export default function Goals() {
                       Add Money
                     </Button>
 
-                    <IconButton size="small" onClick={() => console.log('Edit', goal.id)}>
+                    <IconButton size="small" onClick={() => openEditGoalDialog(goal)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
 
