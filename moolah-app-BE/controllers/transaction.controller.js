@@ -4,202 +4,168 @@ const { admin, db } = require('../firebase/admin');
 function txCol(uid) {
   return db.collection('users').doc(uid).collection('transactions');
 }
-function catDoc(uid, categoryId) {
-  return db.collection('users').doc(uid).collection('categories').doc(String(categoryId));
-}
-function toNumber(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+
+function isNum(v) {
+  return v === undefined || v === null ? false : !Number.isNaN(Number(v));
 }
 
+function validate(body, { partial = false } = {}) {
+  const errors = [];
+
+  if (!partial) {
+    if (!body.type) errors.push('type is required');
+    if (body.amount === undefined || body.amount === null) errors.push('amount is required');
+    if (!body.date) errors.push('date is required');
+  }
+
+  if (body.type !== undefined && !['income', 'expense'].includes(body.type)) {
+    errors.push('type must be income or expense');
+  }
+
+  if (body.amount !== undefined && !isNum(body.amount)) errors.push('amount must be a number');
+  if (body.amount !== undefined && Number(body.amount) <= 0) errors.push('amount must be positive');
+
+  if (body.description !== undefined && typeof body.description !== 'string') {
+    errors.push('description must be a string');
+  }
+
+  if (body.date !== undefined && typeof body.date !== 'string') {
+    errors.push('date must be a string (e.g. YYYY-MM-DD)');
+  }
+
+  if (body.categoryId !== undefined && body.categoryId !== null && typeof body.categoryId !== 'string') {
+    errors.push('categoryId must be a string or null');
+  }
+
+  return errors;
+}
+// GET /api/v1/transactions
 exports.list = async (req, res) => {
   const { uid } = req.user || {};
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthenticated' });
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
 
   const {
     type,
-    category_id,
-    start_date,
-    end_date,
+    categoryId,
+    startDate,
+    endDate,
     search,
-    page = 1,
-    limit = 20,
+    limit = 50,
   } = req.query;
 
-  const lim = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 200);
-  const pg = Math.max(parseInt(page, 10) || 1, 1);
-  const offset = (pg - 1) * lim;
+  const lim = Math.min(parseInt(limit, 10) || 50, 200);
 
   let q = txCol(uid);
 
   if (type && ['income', 'expense'].includes(type)) q = q.where('type', '==', type);
-  if (category_id) q = q.where('categoryId', '==', String(category_id));
+  if (categoryId) q = q.where('categoryId', '==', String(categoryId));
 
-  // Dates stored as ISO strings 'YYYY-MM-DD' for easy range filtering
-  if (start_date) q = q.where('date', '>=', String(start_date));
-  if (end_date) q = q.where('date', '<=', String(end_date));
+  // Dates stored as 'YYYY-MM-DD' strings
+  if (startDate) q = q.where('date', '>=', String(startDate));
+  if (endDate) q = q.where('date', '<=', String(endDate));
 
-  // Stable ordering for pagination
-  q = q.orderBy('date', 'desc').orderBy('createdAt', 'desc');
+  // Firestore needs an orderBy when using range filters; use date then createdAt
+  q = q.orderBy('date', 'desc').orderBy('createdAt', 'desc').limit(lim);
 
-  // Total count (supported in newer Admin SDKs)
-  let total = null;
-  try {
-    const countSnap = await q.count().get();
-    total = countSnap.data().count;
-  } catch (_) {}
+  const snap = await q.get();
 
-  // Offset paging works, but cursor paging is more scalable long-term
-  let snap;
-  try {
-    snap = await q.offset(offset).limit(lim).get();
-  } catch (_) {
-    const fallback = await q.limit(offset + lim).get();
-    snap = { docs: fallback.docs.slice(offset) };
-  }
+  let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  // Firestore can't do SQL LIKE '%term%'. This is a page-only filter.
+  // Simple search filter (client-side) for description text
   if (search) {
     const s = String(search).toLowerCase();
-    rows = rows.filter(r => String(r.description || '').toLowerCase().includes(s));
+    items = items.filter(x => String(x.description || '').toLowerCase().includes(s));
   }
 
-  // Optional: attach category_name for display (best practice is to denormalise onto transactions)
-  const categoryIds = [...new Set(rows.map(r => r.categoryId).filter(Boolean))];
-  if (categoryIds.length) {
-    const catRefs = categoryIds.map(id => catDoc(uid, id));
-    const catSnaps = await db.getAll(...catRefs);
-    const map = new Map();
-    catSnaps.forEach(s => { if (s.exists) map.set(s.id, s.data()); });
-    rows = rows.map(r => ({ ...r, category_name: map.get(r.categoryId)?.name || null }));
-  }
-
-  res.json({
-    success: true,
-    data: rows,
-    pagination: {
-      total,
-      page: pg,
-      limit: lim,
-      totalPages: total === null ? null : Math.max(1, Math.ceil(total / lim)),
-    },
-  });
+  // Plain array response
+  return res.json(items);
 };
 
+// GET /api/v1/transactions/:id
 exports.getById = async (req, res) => {
   const { uid } = req.user || {};
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthenticated' });
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
 
-  const { id } = req.params;
-  const doc = await txCol(uid).doc(String(id)).get();
+  const doc = await txCol(uid).doc(String(req.params.id)).get();
   if (!doc.exists) return res.status(404).json({ success: false, message: 'Transaction not found' });
 
-  res.json({ success: true, data: { id: doc.id, ...doc.data() } });
+  return res.json({ success: true, data: { id: doc.id, ...doc.data() } });
 };
 
+// POST /api/v1/transactions
 exports.create = async (req, res) => {
   const { uid } = req.user || {};
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthenticated' });
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
 
-  const { category_id, amount, description = '', type, date } = req.body || {};
-  if (!category_id || amount === undefined || !type || !date) {
-    return res.status(400).json({ success: false, message: 'Missing required fields' });
-  }
-  if (!['income', 'expense'].includes(type)) {
-    return res.status(400).json({ success: false, message: 'Invalid type' });
-  }
-  const amt = toNumber(amount);
-  if (amt === null || amt <= 0) {
-    return res.status(400).json({ success: false, message: 'Amount must be positive' });
+  const errors = validate(req.body, { partial: false });
+  if (errors.length) {
+    return res.status(400).json({ success: false, message: 'Validation failed', details: errors });
   }
 
-  // Ensure category exists for this user and matches transaction type
-  const catSnap = await catDoc(uid, category_id).get();
-  if (!catSnap.exists) return res.status(400).json({ success: false, message: 'Invalid category_id' });
-  const cat = catSnap.data();
-  if (cat.type && cat.type !== type) {
-    return res.status(400).json({
-      success: false,
-      message: `Category type (${cat.type}) does not match transaction type (${type})`,
-    });
-  }
+  const { amount, description = '', type, date, categoryId = null } = req.body;
 
   const payload = {
-    categoryId: String(category_id),
-    amount: amt,
-    description: String(description || ''),
+    amount: Number(amount),
+    description: String(description),
     type,
     date: String(date), // 'YYYY-MM-DD'
+    categoryId: categoryId ? String(categoryId) : null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
   const ref = await txCol(uid).add(payload);
+  const created = await ref.get();
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     message: 'Transaction created successfully',
-    data: { id: ref.id, ...payload },
+    data: { id: created.id, ...created.data() },
   });
 };
 
+// PUT /api/v1/transactions/:id
 exports.update = async (req, res) => {
   const { uid } = req.user || {};
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthenticated' });
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
 
-  const { id } = req.params;
-  const ref = txCol(uid).doc(String(id));
+  const errors = validate(req.body, { partial: true });
+  if (errors.length) {
+    return res.status(400).json({ success: false, message: 'Validation failed', details: errors });
+  }
+
+  const ref = txCol(uid).doc(String(req.params.id));
   const existing = await ref.get();
   if (!existing.exists) return res.status(404).json({ success: false, message: 'Transaction not found' });
 
   const patch = {};
-  if (req.body.category_id !== undefined) patch.categoryId = String(req.body.category_id);
-  if (req.body.amount !== undefined) {
-    const amt = toNumber(req.body.amount);
-    if (amt === null || amt <= 0) return res.status(400).json({ success: false, message: 'Amount must be positive' });
-    patch.amount = amt;
-  }
-  if (req.body.description !== undefined) patch.description = String(req.body.description || '');
-  if (req.body.type !== undefined) {
-    if (!['income', 'expense'].includes(req.body.type)) {
-      return res.status(400).json({ success: false, message: 'Invalid type' });
-    }
-    patch.type = req.body.type;
-  }
+  if (req.body.amount !== undefined) patch.amount = Number(req.body.amount);
+  if (req.body.description !== undefined) patch.description = String(req.body.description);
+  if (req.body.type !== undefined) patch.type = req.body.type;
   if (req.body.date !== undefined) patch.date = String(req.body.date);
-
-  // If category or type changes, re-validate match
-  const merged = { ...existing.data(), ...patch };
-  if (patch.categoryId !== undefined || patch.type !== undefined) {
-    const catSnap = await catDoc(uid, merged.categoryId).get();
-    if (!catSnap.exists) return res.status(400).json({ success: false, message: 'Invalid category_id' });
-    const cat = catSnap.data();
-    if (cat.type && merged.type && cat.type !== merged.type) {
-      return res.status(400).json({
-        success: false,
-        message: `Category type (${cat.type}) does not match transaction type (${merged.type})`,
-      });
-    }
-  }
+  if (req.body.categoryId !== undefined) patch.categoryId = req.body.categoryId ? String(req.body.categoryId) : null;
 
   patch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-  await ref.set(patch, { merge: true });
 
+  await ref.set(patch, { merge: true });
   const updated = await ref.get();
-  res.json({ success: true, data: { id: updated.id, ...updated.data() } });
+
+  return res.json({
+    success: true,
+    message: 'Transaction updated',
+    data: { id: updated.id, ...updated.data() },
+  });
 };
 
+// DELETE /api/v1/transactions/:id
 exports.remove = async (req, res) => {
   const { uid } = req.user || {};
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthenticated' });
+  if (!uid) return res.status(401).json({ error: 'Unauthenticated' });
 
-  const { id } = req.params;
-  const ref = txCol(uid).doc(String(id));
-  const doc = await ref.get();
-  if (!doc.exists) return res.status(404).json({ success: false, message: 'Transaction not found' });
+  const ref = txCol(uid).doc(String(req.params.id));
+  const existing = await ref.get();
+  if (!existing.exists) return res.status(404).json({ success: false, message: 'Transaction not found' });
 
   await ref.delete();
-  res.status(204).send();
+  return res.status(204).send();
 };
