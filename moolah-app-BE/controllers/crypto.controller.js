@@ -1,25 +1,47 @@
-// controllers/crypto.controller.js
-const BASE_URL = 'https://api.freecryptoapi.com/v1/getTop';
+exports.getTopCrypto = async (req, res) => {
+    try {
+        const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false';
 
-exports.getTopCrypto = async (req, res) =>{
-        const apiKey = process.env.CRYPTO_API_KEY;
+        console.log("Fetching from CoinGecko...");
 
-        try {const apiResponse = await fetch(`${BASE_URL}?top=10`, {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'MoolahApp/1.0'
+            }
         });
-        if (!apiResponse.ok) {
-            return res.status(apiResponse.status).json({ error: "External API failed" });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error("CoinGecko Error:", response.status, errorBody);
+            return res.status(response.status).json({
+                success: false,
+                error: "CoinGecko API Error",
+                message: `API returned status ${response.status}`
+            });
         }
 
-        const data = await apiResponse.json();
+        const data = await response.json();
 
-        
-        res.status(200).json(data);}
-     catch (error) {
-        console.error("Caught error:", error);
-        if (!res.headersSent) {
-            res.status(500).json({ error: "Server crashed" });
-        }
-    }};
+        res.status(200).json({
+            success: true,
+            data: data.map(coin => ({
+                id: coin.id,
+                name: coin.name,
+                symbol: coin.symbol.toUpperCase(),
+                price: coin.current_price,
+                market_cap: coin.market_cap,
+                image: coin.image
+            }))
+        });
 
-
+    } catch (error) {
+        console.error("SERVER ERROR:", error.message);
+        res.status(500).json({
+            success: false,
+            error: "Network error",
+            details: error.message
+        });
+    }
+};

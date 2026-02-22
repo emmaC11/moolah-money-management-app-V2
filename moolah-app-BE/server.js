@@ -22,6 +22,8 @@ app.use('/api/v1/budgets', require('./routes/budget.routes'));
 app.use('/api/v1/goals', require('./routes/goal.routes'));
 app.use('/api/v1/categories', require('./routes/category.routes'));
 app.use('/api/v1/user', require('./routes/user.routes'));
+app.use('/api/v1/crypto', require('./routes/crypto.routes'));
+app.use('/api/v1/currency',require('./routes/currency.routes'))
 
 // Health check
 app.get('/health', (req, res) => {
