@@ -26,6 +26,7 @@ const pages = [
   { name: 'Transactions', path: '/transactions' },
   { name: 'Budgets', path: '/budgets' },
   { name: 'Goals', path: '/goals' },
+  { name: 'Review Progress', path: '/progress' },
   // Changes for external API: We use 'action' instead of 'path' 
   // so the router doesn't try to change the website URL.
   { name: 'Daily Exchange Rates', action: 'openExchange' },
