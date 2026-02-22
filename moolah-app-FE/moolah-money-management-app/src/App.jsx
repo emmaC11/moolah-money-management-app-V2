@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Transactions from "./pages/Transactions.jsx";
 import Budgets from "./pages/Budgets.jsx";
 import Goals from "./pages/Goals.jsx";
+import ReviewProgress from "./pages/ReviewProgress.jsx";
 
 import ThemeToggle from "./ThemeToggle.jsx";
 
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/budgets" element={<Budgets />} />
           <Route path="/goals" element={<Goals />} />
+          <Route path="/progress" element={<ReviewProgress />} />
 
           {/* Catch-all: redirect unknown routes to home */}
           <Route path="*" element={<Navigate to="/" replace />} />

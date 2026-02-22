@@ -40,7 +40,7 @@ export default function Dashboard() {
       title: '04 Review Progress',
       description: 'See your progress, celebrate your wins, and adjust your strategy for continued success.',
       icon: <TrendingUpIcon sx={{ fontSize: 32 }} />,
-      path: '/budgets',
+      path: '/progress',
       backgroundColor: '#DCFCE7',
       iconColor: '#16A34A'
     }
