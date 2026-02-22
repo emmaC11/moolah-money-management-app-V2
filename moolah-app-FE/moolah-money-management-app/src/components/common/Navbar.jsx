@@ -15,20 +15,33 @@ import AdbIcon from '@mui/icons-material/Adb';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { auth} from "../../firebase";
-// referenced: https://mui.com/material-ui/react-app-bar/
+import { auth } from "../../firebase";
+
+// Changes for external API: Importing the new Dialog components
+import ExchangeRatesDialog from './ExchangeRatesDialog';
+import CryptoDialog from './TopCryptoDialog';
 
 const pages = [
   { name: 'Dashboard', path: '/' },
   { name: 'Transactions', path: '/transactions' },
   { name: 'Budgets', path: '/budgets' },
-  { name: 'Goals', path: '/goals' }
+  { name: 'Goals', path: '/goals' },
+  // Changes for external API: We use 'action' instead of 'path' 
+  // so the router doesn't try to change the website URL.
+  { name: 'Daily Exchange Rates', action: 'openExchange' },
+  { name: 'Top 10 CryptoCoins', action: 'openCrypto' }
 ];
+
 const settings = ['Account', 'Logout'];
 
 function Navbar({ user }) {
   const [anchorElNav, setAnchorElNav] = React.useState(null);
   const [anchorElUser, setAnchorElUser] = React.useState(null);
+
+  // Changes for external API: New state variables to track if popups are open
+  const [exchangeOpen, setExchangeOpen] = React.useState(false);
+  const [cryptoOpen, setCryptoOpen] = React.useState(false);
+
   const navigate = useNavigate();
 
   const handleOpenNavMenu = (event) => {
@@ -46,21 +59,30 @@ function Navbar({ user }) {
     setAnchorElUser(null);
   };
 
-  const handleNavigation = (path) => {
-    navigate(path);
+  // Changes for external API: This function is the "Traffic Controller."
+  // It checks if the menu item is a normal page or an API popup.
+  const handlePageClick = (page) => {
     handleCloseNavMenu();
+
+    if (page.action === 'openExchange') {
+      setExchangeOpen(true); // Opens the Exchange popup
+    } else if (page.action === 'openCrypto') {
+      setCryptoOpen(true);   // Opens the Crypto popup
+    } else if (page.path) {
+      navigate(page.path);   // Navigates to a normal page
+    }
   };
 
-const handleLogout = async () => {
-  try {
-    await signOut(auth);
-    handleCloseUserMenu();
-    navigate("/", { replace: true }); // optional; App.jsx will show Login anyway
-  } catch (err) {
-    console.error("Logout failed:", err);
-    handleCloseUserMenu();
-  }
-};
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      handleCloseUserMenu();
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error("Logout failed:", err);
+      handleCloseUserMenu();
+    }
+  };
 
   return (
     <AppBar position="static" sx={{ backgroundColor: '#ffffff', color: 'var(--primary-green-dark)' }}>
@@ -85,6 +107,7 @@ const handleLogout = async () => {
             Moolah
           </Typography>
 
+          {/* MOBILE MENU */}
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
             <IconButton
               size="large"
@@ -99,81 +122,56 @@ const handleLogout = async () => {
             <Menu
               id="menu-appbar"
               anchorEl={anchorElNav}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
               keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
+              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
               open={Boolean(anchorElNav)}
               onClose={handleCloseNavMenu}
               sx={{ display: { xs: 'block', md: 'none' } }}
             >
               {pages.map((page) => (
-                <MenuItem key={page.name} onClick={() => handleNavigation(page.path)}>
+                // Changes for external API: Calling handlePageClick instead of direct navigation
+                <MenuItem key={page.name} onClick={() => handlePageClick(page)}>
                   <Typography sx={{ textAlign: 'center' }}>{page.name}</Typography>
                 </MenuItem>
               ))}
             </Menu>
           </Box>
+
           <AdbIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
-          <Typography
-            variant="h5"
-            noWrap
-            component={Link}
-            to="/"
-            sx={{
-              mr: 2,
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            LOGO
-          </Typography>
+          
+          {/* DESKTOP MENU */}
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center', gap: 10 }}>
             {pages.map((page) => (
               <Button
                 key={page.name}
-                component={Link}
-                to={page.path}
-                onClick={handleCloseNavMenu}
+                // Changes for external API: We removed component={Link} because 
+                // popups are triggered by logic, not by a URL change.
+                onClick={() => handlePageClick(page)}
                 sx={{ my: 2, color: 'var(--primary-green-dark)', display: 'block', textTransform: 'none', fontWeight: 600 }}
               >
                 {page.name}
               </Button>
             ))}
           </Box>
+
+          {/* USER SETTINGS MENU */}
           <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                
-<Avatar
-  alt={user?.displayName || user?.email || "User"}
-  src={user?.photoURL || undefined}
-/>
+                <Avatar
+                  alt={user?.displayName || user?.email || "User"}
+                  src={user?.photoURL || undefined}
+                />
               </IconButton>
             </Tooltip>
             <Menu
               sx={{ mt: '45px' }}
               id="menu-appbar"
               anchorEl={anchorElUser}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
               keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
               open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
             >
@@ -186,7 +184,19 @@ const handleLogout = async () => {
           </Box>
         </Toolbar>
       </Container>
+
+      {/* Changes for external API: The Dialogs live here. 
+          They are invisible until their 'open' prop becomes true. */}
+      <ExchangeRatesDialog 
+        open={exchangeOpen} 
+        onClose={() => setExchangeOpen(false)} 
+      />
+      <CryptoDialog 
+        open={cryptoOpen} 
+        onClose={() => setCryptoOpen(false)} 
+      />
     </AppBar>
   );
 }
+
 export default Navbar;
