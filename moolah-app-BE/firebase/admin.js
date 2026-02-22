@@ -1,3 +1,4 @@
+// firebase/admin.js
 const admin = require('firebase-admin');
 
 if (!admin.apps.length) {
@@ -6,6 +7,7 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
     });
   } else {
+    // Uses Application Default Credentials (ADC) if available
     admin.initializeApp();
   }
 }

@@ -1,70 +1,99 @@
-import { Typography, Container, Box, Card, CardContent, Button, IconButton, Chip } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+
+import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+
+// MUI components
+import Container from '@mui/material/Container';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+
+// MUI icons
+import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { auth } from '../firebase';
-import { useState, useEffect } from 'react';
-
-const colDef = [
-  { field: 'date', headerName: 'Date' },
-  { field: 'description', headerName: 'Description' },
-  { field: 'category_name', headerName: 'Category' },
-  { field: 'amount', headerName: 'Amount' },
-  { field: 'type', headerName: 'Type' },
-];
 
 export default function Transactions() {
-
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // after component mounts, fetch transactions from backend API
+   const colDef = useMemo(
+    () => [
+      { field: 'type', headerName: 'Type' },
+      { field: 'amount', headerName: 'Amount' },
+      { field: 'date', headerName: 'Date' },
+      { field: 'category', headerName: 'Category' },
+      { field: 'description', headerName: 'Description' },
+    ],
+    []
+  );
+
   useEffect(() => {
-    getTransactions();
-  }, []);
-
-  const getTransactions = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const user = auth.currentUser;
-
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setError('Not authenticated');
+        setTransactions([]);
         setLoading(false);
         return;
       }
 
-      const token = await user.getIdToken();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/transactions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      setLoading(true);
+      setError(null);
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      try {
+        const txRef = collection(db, 'users', user.uid, 'transactions');
+
+        const q = query(txRef, orderBy('date', 'desc'), limit(200));
+        const snap = await getDocs(q);
+
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setTransactions(items);
+      } catch (e) {
+        console.error('Firestore transactions read failed:', e);
+        setError(e?.message || 'Failed to load transactions');
+      } finally {
+        setLoading(false);
       }
+    });
 
-      const data = await res.json();
+    return () => unsub();
+  }, []);
 
-      if (data.success) {
-        setTransactions(data.data || []);
-      } else {
-        setError(data.message || 'Failed to fetch transactions');
-      }
-    } catch (err) {
-      console.error('Error fetching transactions:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const formatAmount = (amount, type) => {
+    const num = Number(amount);
+    if (Number.isNaN(num)) return '—';
+    const formatted = `€${num.toFixed(2)}`;
+    return type === 'income' ? `+${formatted}` : `-${formatted}`;
   };
 
-  // loading message while fetching transactions from backend API
+  const formatDate = (value) => {
+    if (!value) return '—';
+
+    // Handles:
+    // - ISO string like "2026-02-21"
+    // - JS Date
+    // - Firestore Timestamp (has toDate())
+    let dateObj;
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      dateObj = new Date(value);
+    } else if (value instanceof Date) {
+      dateObj = value;
+    } else if (typeof value?.toDate === 'function') {
+      dateObj = value.toDate();
+    }
+
+    if (!dateObj || Number.isNaN(dateObj.getTime())) return '—';
+    return dateObj.toLocaleDateString('en-IE');
+  };
+
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
@@ -73,38 +102,42 @@ export default function Transactions() {
     );
   }
 
-  // formatting functions
-  const formatAmount = (amount, type) => {
-    const formatted = `€${Number(amount).toFixed(2)}`;
-    return type === 'income' ? `+${formatted}` : `-${formatted}`;
-  }
-
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-IE');
-  }
-
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header Section */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+        }}
+      >
         <Box>
-          <Typography variant="h4" sx={{ color: 'var(--primary-green-dark)', fontWeight: 700, mb: 1 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              color: 'var(--primary-green-dark)',
+              fontWeight: 700,
+              mb: 1,
+            }}
+          >
             Transactions Overview
           </Typography>
           <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
             Review your recent transactions
           </Typography>
         </Box>
+
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           sx={{
             backgroundColor: 'var(--primary-green)',
             textTransform: 'none',
-            '&:hover': {
-              backgroundColor: 'var(--primary-green-dark)'
-            }
+            '&:hover': { backgroundColor: 'var(--primary-green-dark)' },
           }}
+          onClick={() => console.log('Add Transaction clicked')}
         >
           Add Transaction
         </Button>
@@ -119,14 +152,14 @@ export default function Transactions() {
         </Box>
       )}
 
-      { /* no transactions added yet */}
+      {/* No transactions */}
       {!error && transactions.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 6 }}>
           <Typography variant="h6" sx={{ color: 'var(--text-muted)', mb: 2 }}>
             No transactions yet
           </Typography>
           <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
-            Click "Add Transaction" to create your first transaction
+            Click &quot;Add Transaction&quot; to create your first transaction
           </Typography>
         </Box>
       )}
@@ -134,46 +167,83 @@ export default function Transactions() {
       {/* Transactions List */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {transactions.map((transaction) => (
-          <Card key={transaction.transaction_id} sx={{ border: '1px solid var(--border)' }}>
+          <Card
+            key={transaction.id ?? `${transaction.date}-${transaction.amount}-${transaction.type}`}
+            sx={{ border: '1px solid var(--border)' }}
+          >
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center', 
+                }}
+              >
                 <Box sx={{ flex: 1 }}>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 2 }}>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(5, 1fr)',
+                      gap: 2,
+                    }}
+                  >
                     {colDef.map((col) => (
                       <Box key={col.field}>
                         <Typography variant="caption" sx={{ color: 'var(--text-muted)' }}>
                           {col.headerName}
                         </Typography>
+
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
                           {col.field === 'type' ? (
                             <Chip
-                              label={transaction[col.field]}
+                              label={transaction.type || '—'}
                               size="small"
                               sx={{
-                                backgroundColor: transaction[col.field] === 'income' ? 'var(--success-light)' : 'var(--error-light)',
-                                color: transaction[col.field] === 'income' ? 'var(--primary-green-dark)' : 'var(--error)',
-                                height: 24
+                                backgroundColor:
+                                  transaction.type === 'income'
+                                    ? 'var(--success-light)'
+                                    : 'var(--error-light)',
+                                color:
+                                  transaction.type === 'income'
+                                    ? 'var(--primary-green-dark)'
+                                    : 'var(--error)',
+                                height: 24,
                               }}
                             />
                           ) : col.field === 'amount' ? (
-                            <span style={{ color: transaction.type === 'income' ? 'var(--primary-green)' : 'var(--error)' }}>
-                              {formatAmount(transaction[col.field], transaction.type)}
+                            <span
+                              style={{
+                                color:
+                                  transaction.type === 'income'
+                                    ? 'var(--primary-green)'
+                                    : 'var(--error)',
+                              }}
+                            >
+                              {transaction.amount !== undefined
+                                ? formatAmount(transaction.amount, transaction.type)
+                                : '—'}
                             </span>
                           ) : col.field === 'date' ? (
-                            formatDate(transaction[col.field])
+                            formatDate(transaction.date)
                           ) : (
-                            transaction[col.field] || '—'
+                            transaction[col.field] ?? '—'
                           )}
                         </Typography>
                       </Box>
                     ))}
                   </Box>
                 </Box>
+
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <IconButton size="small">
+                  <IconButton size="small" onClick={() => console.log('Edit', transaction.id)}>
                     <EditIcon fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" sx={{ color: 'var(--error)' }}>
+
+                  <IconButton
+                    size="small"
+                    sx={{ color: 'var(--error)' }}
+                    onClick={() => console.log('Delete', transaction.id)}
+                  >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>
