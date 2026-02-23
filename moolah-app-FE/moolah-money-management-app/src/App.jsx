@@ -9,6 +9,7 @@ import Transactions from "./pages/Transactions.jsx";
 import Budgets from "./pages/Budgets.jsx";
 import Goals from "./pages/Goals.jsx";
 import ReviewProgress from "./pages/ReviewProgress.jsx";
+import Footer from './components/common/Footer';
 
 import ThemeToggle from "./ThemeToggle.jsx";
 
@@ -53,7 +54,7 @@ export default function App() {
 
   // Logged in → show app shell + routes
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <Navbar user={user} />
 
       {/* Put the theme toggle somewhere visible.
@@ -62,7 +63,7 @@ export default function App() {
         <ThemeToggle />
       </div>
 
-      <main className="px-4 py-4">
+      <main className="px-4 py-4 flex-1">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/transactions" element={<Transactions />} />
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-    </>
+      <Footer />
+    </div>
   );
 }
