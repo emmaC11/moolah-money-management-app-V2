@@ -54,6 +54,19 @@
 
     --beige: 60 56% 91%;
     --header-bg: hsl(142 25% 65%);
+
+    /* add back original palette I created */
+    --primary-green: #22C55E;
+    --primary-green-dark: #16A34A;
+    --background: #F9FAFB;
+    --card-bg: #FFFFFF;
+    --text-primary: #111827;
+    --text-secondary: #6B7280;
+    --text-muted: #9CA3AF;
+    --border: #E5E7EB;
+    --success-light: #DCFCE7;
+    --error: #EF4444;
+    --error-light: #FEE2E2;
   }
 
   /* -----------------------------------------------------

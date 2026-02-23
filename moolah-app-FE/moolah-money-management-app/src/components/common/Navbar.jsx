@@ -86,7 +86,7 @@ function Navbar({ user }) {
   };
 
   return (
-    <AppBar position="static" sx={{ backgroundColor: '#ffffff', color: 'var(--primary-green-dark)' }}>
+    <AppBar position="static" sx={{ backgroundColor: '#ffffff', color: 'var(--primary-green)' }}>
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           <PaymentsIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
