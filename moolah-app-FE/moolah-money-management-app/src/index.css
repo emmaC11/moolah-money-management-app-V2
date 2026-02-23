@@ -105,10 +105,6 @@
     --header-bg: hsl(220 15% 18%);
   }
 
-  /* -----------------------------------------------------
-     GLOBAL ELEMENT RULES
-     These work with your Tailwind colour tokens
-  ------------------------------------------------------ */
   * {
     @apply border-border;
     transition:
@@ -137,18 +133,14 @@
   }
 }
 
-/* -----------------------------------------------------
-   App Container
------------------------------------------------------- */
+/* App Container */
 #root {
   overflow-x: hidden;
   max-width: 100vw;
   width: 100%;
 }
 
-/* -----------------------------------------------------
-   Responsive tweaks
------------------------------------------------------- */
+/* Responsive tweaks */
 @media (max-width: 768px) {
   .container { @apply px-3 max-w-full; }
   h1 { font-size: 1.5rem; line-height: 1.3; }

@@ -73,7 +73,7 @@ export default function ReviewProgress() {
     return () => unsub();
   }, []);
 
-  // ── Chart 1: Income vs Expenses by Month 
+  // Chart 1: Income vs Expenses by Month 
   const incomeExpenseChartOptions = useMemo(() => {
     const now = new Date();
     const months = [];
@@ -134,7 +134,7 @@ export default function ReviewProgress() {
     };
   }, [transactions]);
 
-  // ── Chart 2: Goals Progress 
+  // Chart 2: Goals Progress 
   const goalsChartOptions = useMemo(() => {
     const categories = goals.map((g) => g.name || 'Unnamed');
     const savedSeries = goals.map((g) =>
@@ -161,7 +161,7 @@ export default function ReviewProgress() {
     };
   }, [goals]);
 
-  // ── Chart 3: Budget vs Actual Spending
+  // Chart 3: Budget vs Actual Spending
   const budgetChartOptions = useMemo(() => {
     const expenseTransactions = transactions.filter((t) => t.type === 'expense');
     const categories = budgets.map((b) => b.name || b.categoryId || 'Unnamed');

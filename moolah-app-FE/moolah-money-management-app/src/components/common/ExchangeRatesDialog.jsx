@@ -11,12 +11,10 @@ export default function ExchangeRatesDialog({ open, onClose }) {
   useEffect(() => {
     if (open) {
       setLoading(true);
-      // Ensure this matches your server port and v1 route
       fetch('http://localhost:3000/api/v1/currency/latest') 
         .then((res) => res.json())
         .then((json) => {
           if (json.success) {
-            // CHANGE HERE: We use json.rates based on your raw data
             setRates(json.rates); 
           }
           setLoading(false);
@@ -41,7 +39,6 @@ export default function ExchangeRatesDialog({ open, onClose }) {
           </Box>
         ) : (
           <List>
-            {/* We convert the object into an array: ['AUD', 1.6697] */}
             {Object.entries(rates).map(([currency, value]) => (
               <ListItem key={currency} divider>
                 <ListItemText 
@@ -49,7 +46,6 @@ export default function ExchangeRatesDialog({ open, onClose }) {
                   secondary={`1 EUR to ${currency}`} 
                 />
                 <Typography sx={{ fontWeight: 'bold' }}>
-                  {/* .toLocaleString handles the commas/decimals nicely */}
                   {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                 </Typography>
               </ListItem>

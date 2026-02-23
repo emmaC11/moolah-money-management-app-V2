@@ -149,7 +149,4 @@ export default function Dashboard() {
       </Box>
     </Container>
   );
-<IconButton onClick={handleLogout} aria-label="Sign out">
-  <LogoutIcon />
-</IconButton>
 }

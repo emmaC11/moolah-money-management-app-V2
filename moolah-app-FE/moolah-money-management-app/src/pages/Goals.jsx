@@ -41,7 +41,6 @@ import {
   increment,
 } from 'firebase/firestore';
 
-// Dropdown options for goal type (chip displays this type)
 const GOAL_TYPES = [
   { value: 'rainy-day-fund', label: 'Rainy Day Fund' },
   { value: 'dream-vacation', label: 'Dream Vacation' },
@@ -72,14 +71,11 @@ export default function Goals() {
     deadline: '', // YYYY-MM-DD
   });
 
-  // ✅ Add Money dialog + form (new)
   const [openAddMoney, setOpenAddMoney] = useState(false);
   const [addMoneySaving, setAddMoneySaving] = useState(false);
   const [addMoneyError, setAddMoneyError] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [moneyAmount, setMoneyAmount] = useState('');
-
-  // ---------------- Helpers ----------------
 
   const calculateProgress = (current, target) => {
     const cur = Number(current);
@@ -148,7 +144,6 @@ export default function Goals() {
     if (!saving) setOpenAdd(false);
   };
 
-  // ✅ Open/close Add Money dialog (new)
   const openAddMoneyDialog = (goal) => {
     setAddMoneyError(null);
     setSelectedGoal(goal);
@@ -160,7 +155,6 @@ export default function Goals() {
     if (!addMoneySaving) setOpenAddMoney(false);
   };
 
-  // ---------------- Load Goals ----------------
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user ?? null);
@@ -269,7 +263,6 @@ export default function Goals() {
     }
   };
 
-  // ---------------- Delete Goal ----------------
   const deleteGoal = async (goalId) => {
     if (!currentUser) {
       setError('You must be logged in to delete a goal.');
@@ -288,7 +281,6 @@ export default function Goals() {
     }
   };
 
-  // ✅ Add Money (new)
   const addMoneyToGoal = async () => {
     setAddMoneyError(null);
 
@@ -309,12 +301,10 @@ export default function Goals() {
 
     setAddMoneySaving(true);
     try {
-      // Atomic increment in Firestore
       await updateDoc(doc(db, 'goals', selectedGoal.id), {
         current: increment(amountNum),
       });
 
-      // Update UI immediately (simple)
       setGoals((prev) =>
         prev.map((g) =>
           g.id === selectedGoal.id
@@ -332,12 +322,11 @@ export default function Goals() {
     }
   };
 
-  // ---------------- Summary Cards ----------------
   const totalGoals = goals.length;
   const totalSaved = goals.reduce((sum, goal) => sum + Number(goal.current || 0), 0);
   const totalTarget = goals.reduce((sum, goal) => sum + Number(goal.target || 0), 0);
 
-  // ---------------- Render ----------------
+
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
@@ -441,7 +430,6 @@ export default function Goals() {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ Add Money Dialog (new) */}
       <Dialog open={openAddMoney} onClose={closeAddMoneyDialog} fullWidth maxWidth="xs">
         <DialogTitle>Add Money</DialogTitle>
 
@@ -655,7 +643,7 @@ export default function Goals() {
                           backgroundColor: 'var(--success-light)',
                         },
                       }}
-                      onClick={() => openAddMoneyDialog(goal)}   // ✅ wired up
+                      onClick={() => openAddMoneyDialog(goal)} 
                     >
                       Add Money
                     </Button>

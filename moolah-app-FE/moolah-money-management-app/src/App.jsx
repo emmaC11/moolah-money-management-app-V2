@@ -10,13 +10,8 @@ import Budgets from "./pages/Budgets.jsx";
 import Goals from "./pages/Goals.jsx";
 import ReviewProgress from "./pages/ReviewProgress.jsx";
 import Footer from './components/common/Footer';
-
 import ThemeToggle from "./ThemeToggle.jsx";
-
-// ⬇️ This matches the path shown in your current App.jsx
 import Login from "./components/login/login.jsx";
-
-// Firebase auth instance exported from src/firebase.js
 import { auth } from "./firebase";
 
 export default function App() {
@@ -34,7 +29,6 @@ export default function App() {
   }, []);
 
   if (checking) {
-    // Optional: nicer loading UI
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-sm opacity-70">Loading…</p>
@@ -51,14 +45,11 @@ export default function App() {
       </div>
     );
   }
-
-  // Logged in → show app shell + routes
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar user={user} />
 
-      {/* Put the theme toggle somewhere visible.
-          You can move this into Navbar later if you prefer. */}
       <div className="px-4">
         <ThemeToggle />
       </div>

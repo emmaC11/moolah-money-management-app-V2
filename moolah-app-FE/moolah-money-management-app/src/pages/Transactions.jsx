@@ -12,8 +12,6 @@ import {
   doc,
   Timestamp,
 } from 'firebase/firestore';
-
-// MUI components
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -22,8 +20,6 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
-
-// Dialog components
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -31,8 +27,6 @@ import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
-
-// Icons
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -270,17 +264,16 @@ export default function Transactions() {
           </Typography>
         </Box>
 
-        {/* ✅ UPDATED BUTTON — BLACK TEXT + BLACK ICON */}
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           sx={{
             backgroundColor: 'var(--primary-green)',
-            color: '#000', // BLACK TEXT
+            color: '#000',
             textTransform: 'none',
 
             '& .MuiButton-startIcon, & .MuiSvgIcon-root': {
-              color: '#000', // BLACK ICON
+              color: '#000',
             },
 
             '&:hover': {

@@ -105,8 +105,6 @@ export default function Budgets() {
     setTransactions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   };
 
-  // ---- Form handlers ----
-
   const onFormChange = (key) => (e) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };

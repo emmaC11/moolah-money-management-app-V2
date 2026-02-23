@@ -27,8 +27,6 @@ const pages = [
   { name: 'Budgets', path: '/budgets' },
   { name: 'Goals', path: '/goals' },
   { name: 'Review Progress', path: '/progress' },
-  // Changes for external API: We use 'action' instead of 'path' 
-  // so the router doesn't try to change the website URL.
   { name: 'Daily Exchange Rates', action: 'openExchange' },
   { name: 'Top 10 CryptoCoins', action: 'openCrypto' }
 ];
@@ -60,17 +58,15 @@ function Navbar({ user }) {
     setAnchorElUser(null);
   };
 
-  // Changes for external API: This function is the "Traffic Controller."
-  // It checks if the menu item is a normal page or an API popup.
   const handlePageClick = (page) => {
     handleCloseNavMenu();
 
     if (page.action === 'openExchange') {
-      setExchangeOpen(true); // Opens the Exchange popup
+      setExchangeOpen(true);
     } else if (page.action === 'openCrypto') {
-      setCryptoOpen(true);   // Opens the Crypto popup
+      setCryptoOpen(true); 
     } else if (page.path) {
-      navigate(page.path);   // Navigates to a normal page
+      navigate(page.path); 
     }
   };
 
@@ -146,8 +142,6 @@ function Navbar({ user }) {
             {pages.map((page) => (
               <Button
                 key={page.name}
-                // Changes for external API: We removed component={Link} because 
-                // popups are triggered by logic, not by a URL change.
                 onClick={() => handlePageClick(page)}
                 sx={{ my: 2, color: 'var(--primary-green-dark)', display: 'block', textTransform: 'none', fontWeight: 600 }}
               >
@@ -186,8 +180,6 @@ function Navbar({ user }) {
         </Toolbar>
       </Container>
 
-      {/* Changes for external API: The Dialogs live here. 
-          They are invisible until their 'open' prop becomes true. */}
       <ExchangeRatesDialog 
         open={exchangeOpen} 
         onClose={() => setExchangeOpen(false)} 
