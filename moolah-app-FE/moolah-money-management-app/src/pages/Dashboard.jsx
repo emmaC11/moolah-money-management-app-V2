@@ -57,7 +57,7 @@ export default function Dashboard() {
         <Typography 
           variant="h3" 
           sx={{ 
-            color: 'var(--text-primary)', 
+            color: 'var(--primary-green-dark)', 
             fontWeight: 700, 
             mb: 2 
           }}
