@@ -45,7 +45,6 @@ module.exports = async function authFirebase(req, res, next) {
     }
   }
 
-  // ✅ Normal secure path (will fail on your machine due to TLS trust issue)
   try {
     const decoded = await auth.verifyIdToken(token, true);
     req.user = decoded;

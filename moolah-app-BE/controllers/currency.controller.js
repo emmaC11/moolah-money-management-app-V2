@@ -1,5 +1,3 @@
-// controllers/currency.controller.js
-
 exports.getExchangeRates = async (req, res) => {
     try {
         const url = 'https://api.frankfurter.dev/v1/latest';

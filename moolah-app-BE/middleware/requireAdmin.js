@@ -2,7 +2,6 @@
 module.exports = function requireAdmin(req, res, next) {
   const u = req.user || {};
 
-  // Support common admin patterns (custom claim or roles)
   const isAdmin =
     u.admin === true ||
     u.role === 'admin' ||
